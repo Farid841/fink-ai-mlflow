@@ -1,0 +1,21 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir \
+    "mlflow-oidc-auth[full]==6.7.0" \
+    psycopg2-binary \
+    boto3
+
+# Copy startup script
+COPY ./scripts/mlflow-docker-ENTRYPOINT.sh /app/mlflow-docker-ENTRYPOINT.sh
+RUN chmod +x /app/mlflow-docker-ENTRYPOINT.sh
+
+ARG MLFLOW_PORT=5000
+EXPOSE ${MLFLOW_PORT}
+
+ENTRYPOINT ["/app/mlflow-docker-ENTRYPOINT.sh"]
