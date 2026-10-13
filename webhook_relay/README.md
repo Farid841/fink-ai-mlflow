@@ -4,8 +4,11 @@
 
 ```
 MLflow (model promoted to @champion)
-  → POST /webhook  →  webhook-relay container → POST /repos/.../dispatches  →  GitHub Actions
+  → POST https://mlflow.fink-broker.org/webhook  →  NGINX  →  webhook-relay container
+  → POST /repos/.../dispatches  →  GitHub Actions
 ```
+
+MLflow only accepts HTTPS webhook URLs, so the relay cannot be called directly between containers (`http://webhook-relay:8080/webhook` is rejected). Instead of managing an internal certificate, the relay is exposed by NGINX under `/webhook` on the MLflow domain and reuses its Let's Encrypt certificate. The endpoint is public: the HMAC signature is what protects it.
 
 When someone sets the `@champion` alias on a model version in MLflow, MLflow fires a webhook. The `webhook-relay` service receives it, verifies the HMAC signature, and triggers a `repository_dispatch` event on GitHub — which starts your CI pipeline.
 
@@ -56,12 +59,20 @@ Create the webhook — the URL is the relay's `/webhook` endpoint:
 
 ```bash
 python webhook_relay/manage_webhooks.py create \
-  --url http://webhook-relay:8080/webhook \
+  --url https://mlflow.fink-broker.org/webhook \
   --name champion-ci-trigger
 ```
 
-> If you run this from outside the Docker network, use the host-mapped port instead:
-> `--url http://localhost:8080/webhook`
+The URL must be HTTPS. NGINX forwards `/webhook` to the relay on `127.0.0.1:8080`:
+
+```nginx
+location /webhook {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+```
 
 The script will print a generated HMAC secret:
 

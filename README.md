@@ -1,14 +1,8 @@
 # fink-ai-mlflow
 
-MLflow tracking server for Fink, deployed with Docker Compose at <https://mlflow.fink-broker.org>.
+MLflow tracking server for Fink, deployed with Docker Compose
 
-```
-                    ┌──────────────► postgres   (experiments, runs, metadata)
-user ─► nginx ─► mlflow (OIDC login)
-                    ├──────────────► rustfs     (S3 artifact store)
-                    │
-                    └─ alias set ──► webhook-relay ──► GitHub Actions
-```
+
 
 | Service | Role |
 |---|---|
@@ -47,15 +41,6 @@ If the pinned `mlflow-oidc-auth` version in `Dockerfile.mlflow` changed, migrate
 docker compose exec mlflow mlflow db upgrade "$MLFLOW_BACKEND_STORE_URI"
 ```
 
-## Authentication
-
-Login is delegated to the OIDC provider configured in `.env` (`OIDC_*`). Access is group-driven on the identity provider:
-
-- `OIDC_GROUP_NAME` (`mlflow`): read/write
-- `OIDC_ADMIN_GROUP_NAME` (`mlflow-admin`): admin
-- any other authenticated user gets `DEFAULT_MLFLOW_PERMISSIONS` (`READ`)
-
-To grant or revoke access, change the user's groups on the identity provider. Nothing to do on the server.
 
 ## Layout
 
@@ -66,8 +51,3 @@ Dockerfile.mlflow        MLflow + OIDC image
 scripts/                 MLflow container entrypoint
 webhook_relay/           relay service + manage_webhooks.py CLI
 ```
-
-## Server setup
-
-How the VM itself was provisioned (OpenStack, firewall, NGINX, certificates, DNS) is documented in
-[`rubin-performance-check/mlflow/steps.md`](https://gitlab.in2p3.fr/fink/rubin-performance-check/-/blob/main/mlflow/steps.md).
